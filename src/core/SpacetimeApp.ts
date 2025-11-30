@@ -18,6 +18,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
 import { SpacetimeWorld } from '../scene/SpacetimeWorld';
 import { LaserPointer } from '../controls/LaserPointer';
+import { BentLaser, type FieldSource } from '../controls/BentLaser';
 import { WatchAction, WatchUI } from '../ui/WatchUI';
 
 interface ControllerState {
@@ -25,6 +26,7 @@ interface ControllerState {
   controller: Group;
   grip: Group;
   laser: LaserPointer;
+  bentLaser: BentLaser;
   handedness: 'left' | 'right' | 'none';
   selecting: boolean;
   squeezing: boolean;
@@ -54,6 +56,8 @@ export class SpacetimeApp {
   private watchUI: WatchUI;
   private controllers: ControllerState[] = [];
   private interactables: Object3D[] = [];
+  private fieldSources: FieldSource[] = [];
+  private bhWorldPositions: Vector3[] = [];
   private raycaster = new Raycaster();
   private tmpMatrix = new Matrix4();
   private tmpDir = new Vector3();
@@ -130,7 +134,11 @@ export class SpacetimeApp {
       const controller = this.renderer.xr.getController(i);
       const grip = this.renderer.xr.getControllerGrip(i);
       const laser = new LaserPointer(i === 0 ? 0xffa86f : 0x7ab7ff);
+      const bentLaser = new BentLaser(i === 0 ? 0xffc890 : 0xaad0ff, 12, 140);
+      laser.setActive(false);
+      bentLaser.setActive(false);
       controller.add(laser.line);
+      this.scene.add(bentLaser.line);
 
       const model = controllerFactory.createControllerModel(grip);
       grip.add(model);
@@ -145,6 +153,7 @@ export class SpacetimeApp {
         controller,
         grip,
         laser,
+        bentLaser,
         handedness: 'none',
         selecting: false,
         squeezing: false,
@@ -331,8 +340,15 @@ export class SpacetimeApp {
     }
   }
 
-  private updateLaser(state: ControllerState, active: boolean) {
+  private updateLaser(state: ControllerState, active: boolean, fieldSources: FieldSource[]) {
     state.laser.setActive(active);
+    state.bentLaser.setActive(active);
+    if (active) {
+      this.tmpMatrix.identity().extractRotation(state.controller.matrixWorld);
+      this.tmpDir.set(0, 0, -1).applyMatrix4(this.tmpMatrix).normalize();
+      this.tmpOrigin.setFromMatrixPosition(state.controller.matrixWorld);
+      state.bentLaser.updatePath(this.tmpOrigin, this.tmpDir, fieldSources);
+    }
     state.laser.update(); // follows controller via parenting
   }
 
@@ -346,13 +362,14 @@ export class SpacetimeApp {
     this.world.update(elapsed, this.getViewerPosition());
     this.watchUI.renderIfNeeded();
 
+    const fieldSources = this.collectFieldSources();
     this.controllers.forEach((state) => {
       const triggerPressed = this.isTriggerPressed(state);
       state.selecting = triggerPressed;
       if (triggerPressed) {
         this.handleSelection(state);
       }
-      this.updateLaser(state, triggerPressed);
+      this.updateLaser(state, triggerPressed, fieldSources);
       this.updateControllerHover(state);
     });
 
@@ -374,6 +391,25 @@ export class SpacetimeApp {
 
   private refreshInteractables() {
     this.interactables = this.world.interactableObjects();
+  }
+
+  private collectFieldSources(): FieldSource[] {
+    const blackHoles = this.world.getAll();
+    const worldScale = this.world.root.scale.x;
+    this.fieldSources.length = 0;
+    this.bhWorldPositions.length = blackHoles.length;
+    for (let i = 0; i < blackHoles.length; i += 1) {
+      const bh = blackHoles[i];
+      const pos = this.bhWorldPositions[i] ?? new Vector3();
+      bh.group.getWorldPosition(pos);
+      this.bhWorldPositions[i] = pos;
+      this.fieldSources.push({
+        position: pos,
+        mass: bh.mass,
+        radius: bh.radius * worldScale,
+      });
+    }
+    return this.fieldSources;
   }
 
   private updateHud(text: string) {
@@ -481,7 +517,7 @@ export class SpacetimeApp {
         ` b2:${b2?.pressed ? '1' : '0'}(${(b2?.value ?? 0).toFixed(2)})` +
         ` b3:${b3?.pressed ? '1' : '0'}(${(b3?.value ?? 0).toFixed(2)})`,
       );
-      lines.push(` laser visible: ${state.laser.line.visible}`);
+      lines.push(` laser visible: ${state.laser.line.visible}, bent: ${state.bentLaser.line.visible}`);
       lines.push('');
     }
     this.debugPanel.textContent = lines.join('\n');

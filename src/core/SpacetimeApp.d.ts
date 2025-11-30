@@ -9,6 +9,8 @@ export declare class SpacetimeApp {
     private watchUI;
     private controllers;
     private interactables;
+    private fieldSources;
+    private bhWorldPositions;
     private raycaster;
     private tmpMatrix;
     private tmpDir;
@@ -39,6 +41,7 @@ export declare class SpacetimeApp {
     private render;
     private syncWatchUI;
     private refreshInteractables;
+    private collectFieldSources;
     private updateHud;
     private isTriggerPressed;
     private updateHudText;
