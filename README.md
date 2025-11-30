@@ -17,6 +17,12 @@ npm run build # type-checks + production build (requires Node 18+ to avoid synta
 - `npm run dev` now serves over HTTPS with a self-signed cert in `.cert/` (generated automatically with `openssl` if missing). Trust the cert in your OS/browser for WebXR on physical headsets.
 - If `openssl` is unavailable, the dev server falls back to HTTP; install it or drop your own cert/key into `.cert/localhost-cert.pem` and `.cert/localhost-key.pem`.
 
+## Share over HTTPS
+- Terminal A: `npm run dev` (local HTTPS server on 5173).
+- Terminal B (option 1): `npm run tunnel` for a free localtunnel URL. Optional `SUBDOMAIN=spacetime npm run tunnel` for a friendlier link.
+- Terminal B (option 2): `NGROK_AUTHTOKEN=... npm run ngrok` for an ngrok URL. Optional `NGROK_SUBDOMAIN` and `NGROK_REGION` (e.g., `us`, `eu`, `ap`). The script defaults to the provided token if not set.
+- Both tunnels proxy to your local HTTPS server; the printed public URL is what you share. If you hit ngrok issues with the local self-signed cert, run your dev server as HTTP with `VITE_HTTP_ONLY=1 npm run dev` and it will still be exposed as HTTPS externally.
+
 ## Controls
 - Right hand: trigger to select black holes or the watch UI. Laser visually bends near masses.
 - Left hand: watch UI (on the left grip) to add/remove black holes and change mass.
