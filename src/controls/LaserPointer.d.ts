@@ -1,16 +1,10 @@
-import { Line, Vector3 } from 'three';
-import { type BlackHoleData } from '../scene/SpacetimeWorld';
+import { Group } from 'three';
 export declare class LaserPointer {
-    readonly line: Line;
-    private geometry;
-    private positions;
-    private workingDir;
-    private workingPos;
-    private workingForce;
-    private temp;
+    readonly line: Group;
+    private shaft;
+    private tip;
     private active;
-    constructor(color?: number);
-    update(origin: Vector3, direction: Vector3, blackHoles: BlackHoleData[]): void;
-    private applyGravitationalBend;
+    constructor(color?: number, length?: number);
+    update(): void;
     setActive(active: boolean): void;
 }

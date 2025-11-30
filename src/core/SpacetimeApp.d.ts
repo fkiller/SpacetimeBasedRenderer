@@ -12,8 +12,12 @@ export declare class SpacetimeApp {
     private raycaster;
     private tmpMatrix;
     private tmpDir;
+    private tmpOrigin;
     private tmpCameraPos;
+    private tmpPos;
     private clock;
+    private debugPanel;
+    private messagePanel;
     private twoHand;
     constructor(container: HTMLElement, hud: HTMLElement);
     start(): void;
@@ -36,8 +40,12 @@ export declare class SpacetimeApp {
     private syncWatchUI;
     private refreshInteractables;
     private updateHud;
+    private isTriggerPressed;
     private updateHudText;
     private onResize;
     private getViewerPosition;
     private getHand;
+    private createMessagePanel;
+    private createDebugPanel;
+    private updateDebugPanel;
 }

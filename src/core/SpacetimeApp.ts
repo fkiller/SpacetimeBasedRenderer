@@ -331,7 +331,8 @@ export class SpacetimeApp {
     }
   }
 
-  private updateLaser(state: ControllerState) {
+  private updateLaser(state: ControllerState, active: boolean) {
+    state.laser.setActive(active);
     state.laser.update(); // follows controller via parenting
   }
 
@@ -347,12 +348,11 @@ export class SpacetimeApp {
 
     this.controllers.forEach((state) => {
       const triggerPressed = this.isTriggerPressed(state);
-      state.laser.setActive(true); // force visible for debugging
       state.selecting = triggerPressed;
       if (triggerPressed) {
         this.handleSelection(state);
       }
-      this.updateLaser(state);
+      this.updateLaser(state, triggerPressed);
       this.updateControllerHover(state);
     });
 
