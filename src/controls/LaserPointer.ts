@@ -1,68 +1,62 @@
 import {
-  BufferGeometry,
-  Float32BufferAttribute,
-  Line,
-  LineBasicMaterial,
-  Vector3,
+  Color,
+  ConeGeometry,
+  CylinderGeometry,
+  DoubleSide,
+  Group,
+  Mesh,
+  MeshBasicMaterial,
 } from 'three';
-import { type BlackHoleData } from '../scene/SpacetimeWorld';
 
-const SEGMENTS = 28;
-const MAX_LENGTH = 16;
-const FORCE_SCALE = 0.12;
-
+// Controller-attached, always-on beam (no bending) to ensure visibility in VR and desktop.
 export class LaserPointer {
-  readonly line: Line;
-  private geometry: BufferGeometry;
-  private positions: Float32Array;
-  private workingDir = new Vector3();
-  private workingPos = new Vector3();
-  private workingForce = new Vector3();
-  private temp = new Vector3();
-  private active = false;
+  readonly line: Group;
+  private shaft: Mesh;
+  private tip: Mesh;
+  private active = true;
 
-  constructor(color = 0x7ab7ff) {
-    this.positions = new Float32Array(SEGMENTS * 3);
-    this.geometry = new BufferGeometry();
-    this.geometry.setAttribute('position', new Float32BufferAttribute(this.positions, 3));
+  constructor(color = 0x66ffcc, length = 10) {
+    this.line = new Group();
+    this.line.name = 'LaserPointer';
 
-    const material = new LineBasicMaterial({ color, linewidth: 3, transparent: true, opacity: 0.9 });
-    this.line = new Line(this.geometry, material);
-    this.line.frustumCulled = false;
+    // Shaft along -Z
+    const shaftGeom = new CylinderGeometry(0.007, 0.007, length, 12, 1, true);
+    shaftGeom.rotateX(Math.PI / 2); // align Y axis to Z
+    const shaftMat = new MeshBasicMaterial({
+      color: new Color(color),
+      opacity: 0.9,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+      side: DoubleSide,
+    });
+    this.shaft = new Mesh(shaftGeom, shaftMat);
+    this.shaft.position.set(0, 0, -length / 2);
+    this.shaft.frustumCulled = false;
+    this.line.add(this.shaft);
+
+    // Tip
+    const tipGeom = new ConeGeometry(0.012, 0.08, 16, 1);
+    tipGeom.rotateX(Math.PI / 2);
+    const tipMat = new MeshBasicMaterial({
+      color: new Color(color),
+      opacity: 1.0,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+      side: DoubleSide,
+    });
+    this.tip = new Mesh(tipGeom, tipMat);
+    this.tip.position.set(0, 0, -length);
+    this.tip.frustumCulled = false;
+    this.line.add(this.tip);
+
     this.line.visible = this.active;
+    this.line.renderOrder = 50;
   }
 
-  update(origin: Vector3, direction: Vector3, blackHoles: BlackHoleData[]): void {
-    if (!this.active) {
-      return;
-    }
-    this.workingPos.copy(origin);
-    this.workingDir.copy(direction).normalize();
-
-    const step = MAX_LENGTH / (SEGMENTS - 1);
-    for (let i = 0; i < SEGMENTS; i += 1) {
-      const idx = i * 3;
-      this.positions[idx] = this.workingPos.x;
-      this.positions[idx + 1] = this.workingPos.y;
-      this.positions[idx + 2] = this.workingPos.z;
-
-      this.applyGravitationalBend(blackHoles, step);
-    }
-
-    this.geometry.attributes.position.needsUpdate = true;
-  }
-
-  private applyGravitationalBend(blackHoles: BlackHoleData[], step: number) {
-    this.workingForce.set(0, 0, 0);
-    for (const bh of blackHoles) {
-      const toBH = this.temp.subVectors(bh.position, this.workingPos);
-      const distSq = Math.max(0.05, toBH.lengthSq());
-      const accel = toBH.multiplyScalar((bh.mass * FORCE_SCALE) / distSq);
-      this.workingForce.add(accel);
-    }
-
-    this.workingDir.addScaledVector(this.workingForce, step).normalize();
-    this.workingPos.addScaledVector(this.workingDir, step);
+  update(): void {
+    // No-op; beam follows controller via parenting.
   }
 
   setActive(active: boolean) {

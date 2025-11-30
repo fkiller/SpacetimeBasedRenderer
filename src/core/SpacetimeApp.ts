@@ -3,6 +3,7 @@ import {
   Color,
   Group,
   Intersection,
+  AxesHelper,
   Matrix4,
   Object3D,
   PerspectiveCamera,
@@ -28,6 +29,8 @@ interface ControllerState {
   selecting: boolean;
   squeezing: boolean;
   hover: Intersection | null;
+  gamepad: Gamepad | null;
+  axes: AxesHelper;
 }
 
 interface TwoHandTransform {
@@ -54,8 +57,12 @@ export class SpacetimeApp {
   private raycaster = new Raycaster();
   private tmpMatrix = new Matrix4();
   private tmpDir = new Vector3();
+  private tmpOrigin = new Vector3();
   private tmpCameraPos = new Vector3();
+  private tmpPos = new Vector3();
   private clock = new Clock();
+  private debugPanel: HTMLElement | null = null;
+  private messagePanel: HTMLElement | null = null;
   private twoHand: TwoHandTransform = {
     active: false,
     initialDistance: 1,
@@ -91,6 +98,8 @@ export class SpacetimeApp {
 
     this.setupControllers();
     this.setupInitialScene();
+    this.createDebugPanel();
+    this.createMessagePanel();
 
     window.addEventListener('resize', () => this.onResize());
     this.onResize();
@@ -126,6 +135,11 @@ export class SpacetimeApp {
       const model = controllerFactory.createControllerModel(grip);
       grip.add(model);
 
+      const axes = new AxesHelper(0.08);
+      axes.material.depthTest = false;
+      axes.renderOrder = 30;
+      controller.add(axes);
+
       const state: ControllerState = {
         index: i,
         controller,
@@ -135,10 +149,13 @@ export class SpacetimeApp {
         selecting: false,
         squeezing: false,
         hover: null,
+        gamepad: null,
+        axes,
       };
 
       controller.addEventListener('connected', (event: any) => {
         state.handedness = event.data.handedness || 'none';
+        state.gamepad = event.data.gamepad ?? null;
         if (state.handedness === 'left') {
           this.attachWatchToGrip(grip);
         }
@@ -169,13 +186,10 @@ export class SpacetimeApp {
 
   private onSelectStart(state: ControllerState) {
     state.selecting = true;
-    state.laser.setActive(true);
-    this.handleSelection(state);
   }
 
   private onSelectEnd(state: ControllerState) {
     state.selecting = false;
-    state.laser.setActive(false);
   }
 
   private onSqueezeStart(state: ControllerState) {
@@ -318,10 +332,7 @@ export class SpacetimeApp {
   }
 
   private updateLaser(state: ControllerState) {
-    this.tmpMatrix.identity().extractRotation(state.controller.matrixWorld);
-    this.tmpDir.set(0, 0, -1).applyMatrix4(this.tmpMatrix).normalize();
-    const origin = new Vector3().setFromMatrixPosition(state.controller.matrixWorld);
-    state.laser.update(origin, this.tmpDir, this.world.getAll());
+    state.laser.update(); // follows controller via parenting
   }
 
   private render() {
@@ -335,16 +346,20 @@ export class SpacetimeApp {
     this.watchUI.renderIfNeeded();
 
     this.controllers.forEach((state) => {
-      this.updateLaser(state);
-      this.updateControllerHover(state);
-      if (state.selecting) {
+      const triggerPressed = this.isTriggerPressed(state);
+      state.laser.setActive(true); // force visible for debugging
+      state.selecting = triggerPressed;
+      if (triggerPressed) {
         this.handleSelection(state);
       }
+      this.updateLaser(state);
+      this.updateControllerHover(state);
     });
 
     this.updateTwoHandTransform();
     this.renderer.render(this.scene, this.camera);
     this.updateHudText();
+    this.updateDebugPanel();
   }
 
   private syncWatchUI() {
@@ -363,6 +378,13 @@ export class SpacetimeApp {
 
   private updateHud(text: string) {
     this.hud.textContent = text;
+  }
+
+  private isTriggerPressed(state: ControllerState): boolean {
+    const gp = state.gamepad ?? (state.controller as any).gamepad ?? state.controller.userData?.gamepad;
+    const pressed = gp?.buttons?.[0]?.pressed;
+    if (typeof pressed === 'boolean') return pressed;
+    return state.selecting;
   }
 
   private updateHudText() {
@@ -396,5 +418,72 @@ export class SpacetimeApp {
 
   private getHand(hand: 'left' | 'right'): ControllerState | undefined {
     return this.controllers.find((c) => c.handedness === hand);
+  }
+
+  private createMessagePanel() {
+    const el = document.createElement('div');
+    el.id = 'viewport-message';
+    el.textContent = 'Spacetime Renderer: Debug overlay active';
+    el.style.position = 'fixed';
+    el.style.top = '12px';
+    el.style.left = '50%';
+    el.style.transform = 'translateX(-50%)';
+    el.style.padding = '10px 14px';
+    el.style.borderRadius = '10px';
+    el.style.background = 'rgba(20, 26, 40, 0.82)';
+    el.style.color = '#f1f6ff';
+    el.style.fontFamily = 'Inter, "Segoe UI", system-ui, sans-serif';
+    el.style.fontSize = '14px';
+    el.style.fontWeight = '600';
+    el.style.letterSpacing = '0.2px';
+    el.style.boxShadow = '0 8px 22px rgba(0,0,0,0.35)';
+    el.style.pointerEvents = 'none';
+    el.style.zIndex = '9998';
+    document.body.appendChild(el);
+    this.messagePanel = el;
+  }
+
+  private createDebugPanel() {
+    const el = document.createElement('div');
+    el.id = 'controller-debug';
+    el.style.position = 'fixed';
+    el.style.bottom = '12px';
+    el.style.left = '12px';
+    el.style.padding = '10px 12px';
+    el.style.borderRadius = '8px';
+    el.style.background = 'rgba(10, 12, 18, 0.78)';
+    el.style.color = '#e9f2ff';
+    el.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
+    el.style.fontSize = '12px';
+    el.style.lineHeight = '1.5';
+    el.style.pointerEvents = 'none';
+    el.style.whiteSpace = 'pre';
+    el.style.zIndex = '9999';
+    document.body.appendChild(el);
+    this.debugPanel = el;
+  }
+
+  private updateDebugPanel() {
+    if (!this.debugPanel) return;
+    const lines: string[] = [];
+    for (const state of this.controllers) {
+      const hand = state.handedness ?? 'none';
+      state.controller.getWorldPosition(this.tmpPos);
+      const gp = state.gamepad ?? (state.controller as any).gamepad ?? state.controller.userData?.gamepad;
+      const b0 = gp?.buttons?.[0];
+      const b1 = gp?.buttons?.[1];
+      const b2 = gp?.buttons?.[2];
+      const b3 = gp?.buttons?.[3];
+      lines.push(`${hand.toUpperCase()} pos: ${this.tmpPos.x.toFixed(2)} ${this.tmpPos.y.toFixed(2)} ${this.tmpPos.z.toFixed(2)}`);
+      lines.push(
+        ` b0(trigger):${b0?.pressed ? '1' : '0'}(${(b0?.value ?? 0).toFixed(2)})` +
+        ` b1(grip):${b1?.pressed ? '1' : '0'}(${(b1?.value ?? 0).toFixed(2)})` +
+        ` b2:${b2?.pressed ? '1' : '0'}(${(b2?.value ?? 0).toFixed(2)})` +
+        ` b3:${b3?.pressed ? '1' : '0'}(${(b3?.value ?? 0).toFixed(2)})`,
+      );
+      lines.push(` laser visible: ${state.laser.line.visible}`);
+      lines.push('');
+    }
+    this.debugPanel.textContent = lines.join('\n');
   }
 }
