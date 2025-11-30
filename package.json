@@ -11,6 +11,7 @@
   "devDependencies": {
     "@types/node": "^20.11.17",
     "@types/three": "^0.181.0",
+    "localtunnel": "^2.0.2",
     "typescript": "^5.3.3",
     "vite": "^5.0.10"
   },

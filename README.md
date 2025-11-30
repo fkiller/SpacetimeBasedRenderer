@@ -13,6 +13,10 @@ npm run dev   # starts Vite dev server
 npm run build # type-checks + production build (requires Node 18+ to avoid syntax errors)
 ```
 
+## HTTPS for real hardware
+- `npm run dev` now serves over HTTPS with a self-signed cert in `.cert/` (generated automatically with `openssl` if missing). Trust the cert in your OS/browser for WebXR on physical headsets.
+- If `openssl` is unavailable, the dev server falls back to HTTP; install it or drop your own cert/key into `.cert/localhost-cert.pem` and `.cert/localhost-key.pem`.
+
 ## Controls
 - Right hand: trigger to select black holes or the watch UI. Laser visually bends near masses.
 - Left hand: watch UI (on the left grip) to add/remove black holes and change mass.
