@@ -138,6 +138,7 @@ export class SpacetimeWorld {
                 uTime: this.timeUniform,
                 uInnerColor: { value: new Color(0x0a0f1a) },
                 uFresnelColor: { value: new Color(0x2d4a8f) },
+                uPhotonColor: { value: new Color(0xffc48f) },
                 uHighlight: { value: 0 },
             },
             vertexShader: /* glsl */ `
@@ -157,6 +158,7 @@ export class SpacetimeWorld {
         uniform float uTime;
         uniform vec3 uInnerColor;
         uniform vec3 uFresnelColor;
+        uniform vec3 uPhotonColor;
         uniform float uHighlight;
 
         varying vec3 vNormal;
@@ -174,11 +176,17 @@ export class SpacetimeWorld {
 
           float swirl = sin(uTime * 0.8 + atan(n.z, n.x) * 7.0 + n.y * 10.0);
           float ripple = 0.35 + 0.65 * hash(n.xz + vec2(uTime * 0.15, uTime * 0.09));
-          vec3 base = uInnerColor * (0.35 + 0.65 * (0.5 + 0.5 * swirl));
-          vec3 glow = uFresnelColor * (fresnel * (1.3 + uHighlight * 0.8) * ripple);
+          float gravDarken = 0.25 + 0.75 * exp(-abs(viewDot) * 1.8);
 
-          vec3 color = base + glow;
-          float alpha = clamp(0.75 + fresnel * 0.3, 0.0, 1.0);
+          float photonRing = exp(-pow(viewDot, 2.0) * 22.0) * (0.6 + 0.4 * ripple);
+          float turbulence = 0.35 + 0.65 * (0.5 + 0.5 * swirl);
+
+          vec3 base = uInnerColor * gravDarken * turbulence;
+          vec3 ring = uPhotonColor * (photonRing * (1.2 + uHighlight * 0.6));
+          vec3 glow = uFresnelColor * (fresnel * (0.9 + uHighlight * 0.6) * ripple);
+
+          vec3 color = base + ring + glow;
+          float alpha = clamp(0.7 + fresnel * 0.25 + photonRing * 0.25, 0.0, 1.0);
           gl_FragColor = vec4(color, alpha);
         }
       `,
@@ -231,9 +239,11 @@ export class SpacetimeWorld {
 
           float swirl = sin(uv.x * 18.0 + uTime * 2.2) * 0.5 + sin(radius * 90.0 - uTime * 1.7) * 0.5;
           float heat = pow(1.0 - radius, 3.0);
+          float doppler = 0.7 + 0.3 * sin((uv.x - 0.5) * 6.283 + uTime * 1.5);
 
           vec3 base = mix(uOuterColor, uInnerColor, 1.0 - radius);
           vec3 color = base + uHotColor * (heat * 1.2 + swirl * 0.25);
+          color *= (0.85 + doppler * 0.4);
 
           float alpha = clamp(bandMask * (0.6 + uHighlight * 0.3), 0.0, 1.0);
           gl_FragColor = vec4(color, alpha);

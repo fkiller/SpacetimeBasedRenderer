@@ -35,27 +35,11 @@ export function createLensedSkyMaterial() {
 
       float stars(vec3 dir) {
         vec3 p = normalize(dir) * 450.0;
-        vec3 cell = floor(p);
-        vec3 local = fract(p);
-
-        vec3 rnd = vec3(
-          hash(cell + vec3(1.0, 0.0, 0.0)),
-          hash(cell + vec3(0.0, 1.0, 0.0)),
-          hash(cell + vec3(0.0, 0.0, 1.0))
-        );
-
-        vec2 center = mix(vec2(0.2), vec2(0.8), rnd.xy);
-        float radius = mix(0.006, 0.02, hash(cell + vec3(2.0, 2.0, 2.0)));
-        float dist = length(local.xy - center);
-
-        float core = 1.0 - smoothstep(radius * 0.6, radius, dist);
-        float halo = exp(-dist * 55.0);
-        float sparkle = pow(max(0.0, 1.0 - dist / radius), 6.0);
-        float brightness = max(core, halo) + sparkle * 0.45;
-
-        float density = smoothstep(0.86, 1.0, hash(cell + vec3(3.3, 6.1, 9.9)));
-        float flicker = 0.7 + 0.3 * sin(uTime * 0.8 + hash(cell) * 16.0);
-        return brightness * density * flicker;
+        float d1 = hash(floor(p * 1.7));
+        float d2 = hash(floor(p * 2.3 + 12.3));
+        float density = smoothstep(0.995, 1.0, max(d1, d2));
+        float flicker = 0.65 + 0.35 * sin(uTime * 0.9 + d1 * 18.0);
+        return density * flicker;
       }
 
       vec3 lensDirection(vec3 dir) {
