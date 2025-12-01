@@ -17,6 +17,7 @@ export declare class SpacetimeWorld {
     private idCounter;
     private selectedId;
     private worldPosScratch;
+    private timeUniform;
     constructor();
     addBlackHole(position?: Vector3, mass?: number): string;
     removeBlackHole(id: string): void;
@@ -29,6 +30,8 @@ export declare class SpacetimeWorld {
     private refreshUniforms;
     private computeHorizonRadius;
     private createBlackHoleMesh;
+    private createHorizonMaterial;
+    private createAccretionDiskMaterial;
     private updateSelectionEmissive;
     private updateUniformWorldPositions;
 }

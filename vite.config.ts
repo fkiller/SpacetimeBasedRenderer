@@ -3,6 +3,9 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { defineConfig } from 'vite';
 
+const threeRoot = path.resolve(__dirname, 'vendor/threejs');
+const threeExamplesPath = path.resolve(__dirname, 'vendor/threejs/examples/jsm');
+
 function ensureHttpsConfig() {
   const certDir = path.resolve(process.cwd(), '.cert');
   const keyPath = path.join(certDir, 'localhost-key.pem');
@@ -38,6 +41,16 @@ const httpsConfig = ensureHttpsConfig();
 const httpOnly = process.env.VITE_HTTP_ONLY === '1' || process.env.HTTP_ONLY === '1';
 
 export default defineConfig({
+  resolve: {
+    alias: [
+      // Map the new `three/addons/*` paths to our vendored examples folder.
+      { find: /^three\/addons/, replacement: threeExamplesPath },
+      { find: /^three\/examples\/jsm/, replacement: threeExamplesPath },
+      // Point core `three` imports at the vendored package root (not the file),
+      // so subpaths like `examples/jsm` resolve correctly.
+      { find: 'three', replacement: threeRoot },
+    ],
+  },
   server: {
     host: true,
     port: 5173,

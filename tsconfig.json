@@ -12,7 +12,13 @@
     "isolatedModules": true,
     "esModuleInterop": true,
     "lib": ["ESNext", "DOM"],
-    "types": ["vite/client"]
+    "types": ["vite/client", "three"],
+    "baseUrl": ".",
+    "paths": {
+      "three": ["vendor/threejs"],
+      "three/*": ["vendor/threejs/*"],
+      "three/examples/jsm/*": ["vendor/threejs/examples/jsm/*"]
+    }
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
