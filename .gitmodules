@@ -1,0 +1,3 @@
+[submodule "vendor/threejs"]
+	path = vendor/threejs
+	url = https://github.com/fkiller/three.js.git
