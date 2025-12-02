@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:codex": "PORT=${PORT:-4173} vite --host 0.0.0.0 --port ${PORT:-4173} --clearScreen false",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "preview:codex": "PORT=${PORT:-4173} vite preview --host 0.0.0.0 --port ${PORT:-4173}",
     "tunnel": "node scripts/tunnel.js",
     "ngrok": "node scripts/ngrok.js"
   },

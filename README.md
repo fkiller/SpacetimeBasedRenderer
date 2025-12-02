@@ -13,6 +13,11 @@ npm run dev   # starts Vite dev server
 npm run build # type-checks + production build (requires Node 18+ to avoid syntax errors)
 ```
 
+### Codex preview
+- `npm run dev:codex` binds to `0.0.0.0` on `PORT` (defaults to 4173) so the Codex environment can publish the front-end for testing.
+- `npm run preview:codex` serves the production build on the same host/port combo.
+- The dev server now forces a full refresh when local Git commits update `.git/HEAD` or branch refs, ensuring preview URLs stay in sync with code changes.
+
 ## HTTPS for real hardware
 - `npm run dev` now serves over HTTPS with a self-signed cert in `.cert/` (generated automatically with `openssl` if missing). Trust the cert in your OS/browser for WebXR on physical headsets.
 - If `openssl` is unavailable, the dev server falls back to HTTP; install it or drop your own cert/key into `.cert/localhost-cert.pem` and `.cert/localhost-key.pem`.

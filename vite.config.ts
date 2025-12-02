@@ -3,6 +3,41 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { defineConfig } from 'vite';
 
+function gitCommitRefreshPlugin() {
+  return {
+    name: 'git-commit-refresh',
+    configureServer(server) {
+      const gitRoot = path.resolve(process.cwd(), '.git');
+      const headFile = path.join(gitRoot, 'HEAD');
+      const refsDir = path.join(gitRoot, 'refs', 'heads');
+      const watchTargets = fs.existsSync(headFile) ? [headFile] : [];
+
+      if (fs.existsSync(refsDir)) {
+        for (const entry of fs.readdirSync(refsDir)) {
+          watchTargets.push(path.join(refsDir, entry));
+        }
+      }
+
+      if (!watchTargets.length) {
+        return;
+      }
+
+      const watchers = watchTargets
+        .map((target) => {
+          try {
+            return fs.watch(target, () => server.ws.send({ type: 'full-reload' }));
+          } catch (err) {
+            console.warn(`Failed to watch ${target}:`, err);
+            return undefined;
+          }
+        })
+        .filter(Boolean);
+
+      server.httpServer?.once('close', () => watchers.forEach((w) => w?.close()));
+    },
+  };
+}
+
 const threeRoot = path.resolve(__dirname, 'vendor/threejs');
 const threeExamplesPath = path.resolve(__dirname, 'vendor/threejs/examples/jsm');
 
@@ -39,6 +74,7 @@ function ensureHttpsConfig() {
 
 const httpsConfig = ensureHttpsConfig();
 const httpOnly = process.env.VITE_HTTP_ONLY === '1' || process.env.HTTP_ONLY === '1';
+const port = Number(process.env.PORT || 5173);
 
 export default defineConfig({
   resolve: {
@@ -51,9 +87,11 @@ export default defineConfig({
       { find: 'three', replacement: threeRoot },
     ],
   },
+  plugins: [gitCommitRefreshPlugin()],
   server: {
     host: true,
-    port: 5173,
+    port,
+    strictPort: true,
     https: httpOnly ? false : httpsConfig || false,
   },
   build: {
