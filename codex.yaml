@@ -1,0 +1,19 @@
+name: spacetime-based-renderer
+services:
+  - name: web
+    description: Vite dev preview for Codex with public front-end
+    build: npm install
+    start: npm run dev:codex
+    preview: npm run preview:codex
+    port: ${PORT:-4173}
+    autoRefresh: true
+    watch:
+      paths:
+        - src
+        - index.html
+        - vite.config.ts
+        - package.json
+        - tsconfig.json
+        - tsconfig.node.json
+      ignore:
+        - node_modules
